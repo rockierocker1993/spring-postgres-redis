@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:13
+    hostname: postgresql
+    container_name: postgresql
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: rockierocker
+      POSTGRES_PASSWORD: rockierocker
+      POSTGRES_DB: spring_postgres_redis
+    volumes:
+      - "./data/postgresql:/var/lib/postgresql"
+      - "./data/postgresql/data:/var/lib/postgresql/data"
+
+  redis:
+    container_name: redis
+    image: redis
+    volumes:
+      - ./data/redis:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    command: "redis-server /usr/local/etc/redis/redis.conf"
+    ports:
+      - "6379:6379"
+
+  spring:
+    container_name: spring
+    image: maven:3.8.3-openjdk-17
+    #restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    working_dir: /opt/app
+    volumes:
+      - .:/opt/app
+      - ./data/maven:/var/maven/.m2
+    ports:
+      - "8000:8080"
+    environment:
+      - TZ=Asia/Jakarta
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/spring_postgres_redis
+      - SPRING_DATASOURCE_USERNAME=rockierocker
+      - SPRING_DATASOURCE_PASSWORD=rockierocker
+      - SPRING_CACHE_TYPE=redis
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_JPA_SHOW-SQL=true
+      - LOGGING_LEVEL_ROOT=fatal
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK= fatal
+    command: [ "mvn", "-Duser.home=/var/maven", "spring-boot:run" ]
